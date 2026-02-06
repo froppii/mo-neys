@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import PackageCollector from './PackageCollector'
 import ProcessingDesk from './ProcessingDesk'
 
@@ -29,7 +29,7 @@ function PackageDetailsModal({ pkg, onClose, onUpdate, onSend }) {
         </button>
         <div style={{ marginTop: 20, display: 'flex', justifyContent: 'space-between'}}>
           <button onClick={onClose}>cancel</button>
-          <button onClick={() => onSend(pkg)}>send to processing</button>
+          <button onClick={() => onSend({ ...pkg, fragile })}>send to processing</button>
         </div>
       </div>
     </div>
@@ -62,9 +62,7 @@ export default function App() {
 
   return (
     <>
-      {!packageToProcess && !selectedPackage && (
-        <PackageCollector onSelectPackage={handlePackageClick} />
-      )}
+      <PackageCollector onSelectPackage={handlePackageClick} />
 
       {selectedPackage && (
         <PackageDetailsModal

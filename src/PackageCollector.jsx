@@ -4,8 +4,24 @@ import Matter from 'matter-js';
 export default function PackageCollector({ onSelectPackage }) {
     const sceneRef = useRef(null);
 
+    function applyFragilePhysics(body, fragile) {
+        Matter.Body.setDensity(body, fragile ? 0.0005 : 0.002);
+        body.restitution = fragile ? 0.6 : 0.2;
+        body.friction = fragile ? 0.2 : 0.6;
+    }
+
+    function applyFragileVisual(body, fragile) {
+        body.render.fillStyle = fragile ? '#f4a261' : '#d4a373';
+        body.render.strokeStyle = fragile ? '#e63946' : null;
+        body.render.lineWidth = fragile ? 4 : 0;
+    }
+
     useEffect(() => {
         const { Engine, Render, World, Bodies, Mouse, MouseConstraint, Events, Runner } = Matter;
+
+        const savedPackages = JSON.parse(
+            localStorage.getItem('packages') || '[]'
+        );
 
         const engine = Engine.create();
         engine.gravity.y = 1;
@@ -42,14 +58,36 @@ export default function PackageCollector({ onSelectPackage }) {
                 destination: savedData?.destination ?? destinations[Math.floor(Math.random() * destinations.length)],
                 fragile: savedData?.fragile ?? false,
                 width,
-                height
-            }
+                height,
+            };
+
+            applyFragilePhysics(box, box.packageData.fragile);
+            applyFragileVisual(box, box.packageData.fragile);
 
             World.add(engine.world, box);
         }
 
-        for (let i = 0; i < 5; i++) {
-            spawnPackage()
+        if (savedPackages.length) {
+            savedPackages.forEach(pkg => spawnPackage(pkg));
+        } else {
+            for (let i = 0; i < 5; i++) rememberAndSpawn();
+        }
+
+        function rememberAndSpawn() {
+            const temp = {};
+            spawnPackage(temp);
+            saveWorld();
+        }
+
+        function saveWorld() {
+            const packages = engine.world.bodies
+                .filter(b => b.packageData)
+                .map(b => ({
+                    ...b.packageData,
+                    y: b.position.y
+                }));
+            
+            localStorage.setItem('packages', JSON.stringify(packages));
         }
 
         const mouse = Mouse.create(render.canvas);
@@ -62,11 +100,9 @@ export default function PackageCollector({ onSelectPackage }) {
 
         Events.on(mouseConstraint, 'mousedown', event => {
             const body = event.source.body;
+            if (!body?.packageData) return;
 
-            if (body && body.packageData) {
-                onSelectPackage(body.packageData);
-                World.remove(engine.world, body);
-            }
+            onSelectPackage(body.packageData);
         })
 
         const runner = Runner.create();
